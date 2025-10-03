@@ -1,5 +1,5 @@
 import { useState } from "react"
-import Button from "../ui/button"
+
 
 export default function AuthModal() {
   const [isSignUp, setIsSignUp] = useState(true)
