@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import LandingPage from "./Pages/LandingPage/LandingPage";
+import StudentDashboard from "./Components/StudentDashboard";
 import ResearchArchive from "./Pages/ReserachPages/AllResearch";
 import PaperDetail from "./Pages/ReserachPages/SinglePaper";
 
@@ -10,6 +11,7 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/allresearches" element={<ResearchArchive />} />
         <Route path="/paper/:id" element={<PaperDetail />} />
+        <Route path="/dashboard" element={<StudentDashboard />} />
       </Routes>
     </Router>
   );
