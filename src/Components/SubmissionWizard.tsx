@@ -6,17 +6,19 @@ interface SubmissionWizardProps {
 
 const SubmissionWizard = ({ onClose }: SubmissionWizardProps) => {
   const [currentStep, setCurrentStep] = useState(1)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
   const [formData, setFormData] = useState({
     title: '',
     authors: '',
     institution: '',
     keywords: '',
-    pdfFile: null as File | null
+    submissionLink: ''
   })
 
   const steps = [
     { number: 1, title: 'Paper Details' },
-    { number: 2, title: 'Upload PDF' },
+    { number: 2, title: 'Submission Link' },
     { number: 3, title: 'Review & Submit' }
   ]
 
@@ -24,20 +26,62 @@ const SubmissionWizard = ({ onClose }: SubmissionWizardProps) => {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      setFormData(prev => ({ ...prev, pdfFile: file }))
+  const validateLink = (link: string) => {
+    // Basic URL validation
+    try {
+      new URL(link)
+      return true
+    } catch {
+      return false
     }
   }
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (currentStep < 3) {
       setCurrentStep(currentStep + 1)
     } else {
       // Handle final submission
-      console.log('Submitting:', formData)
-      onClose()
+      setIsSubmitting(true)
+      setSubmitError('')
+      
+      try {
+        const token = localStorage.getItem('authToken') // Assuming you store JWT token in localStorage
+        
+        if (!token) {
+          setSubmitError('Authentication required. Please log in.')
+          setIsSubmitting(false)
+          return
+        }
+        
+        const response = await fetch('/api/submit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            title: formData.title,
+            authors: formData.authors,
+            institution: formData.institution,
+            keywords: formData.keywords,
+            submissionLink: formData.submissionLink
+          })
+        })
+
+        if (response.ok) {
+          console.log('Submission successful!')
+          onClose()
+          // You might want to show a success message or redirect
+        } else {
+          const errorData = await response.json().catch(() => ({ message: 'Submission failed' }))
+          setSubmitError(errorData.message || 'Submission failed. Please try again.')
+        }
+      } catch (error) {
+        console.error('Error submitting:', error)
+        setSubmitError('Network error. Please check your connection and try again.')
+      } finally {
+        setIsSubmitting(false)
+      }
     }
   }
 
@@ -224,38 +268,78 @@ const SubmissionWizard = ({ onClose }: SubmissionWizardProps) => {
             </div>
           )}
 
-          {/* Step 2: Upload PDF */}
+          {/* Step 2: Submission Link */}
           {currentStep === 2 && (
             <div>
-              <div style={{
-                border: '2px dashed #D1D5DB',
-                borderRadius: '12px',
-                padding: '3rem',
-                textAlign: 'center',
-                backgroundColor: '#F9FAFB',
-                cursor: 'pointer',
-                transition: 'border-color 0.2s'
-              }}
-                onClick={() => document.getElementById('pdf-upload')?.click()}
-                onMouseOver={(e) => e.currentTarget.style.borderColor = '#2563EB'}
-                onMouseOut={(e) => e.currentTarget.style.borderColor = '#D1D5DB'}
-              >
-                <div style={{ color: '#6B7280', fontSize: '1.125rem', marginBottom: '0.5rem' }}>
-                  Drag & drop PDF here or click to choose.
-                </div>
-                {formData.pdfFile && (
-                  <div style={{ color: '#059669', fontSize: '0.875rem', marginTop: '0.5rem' }}>
-                    Selected: {formData.pdfFile.name}
-                  </div>
-                )}
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.5rem', 
+                  color: '#374151', 
+                  fontWeight: '500' 
+                }}>
+                  Submission Link
+                </label>
+                <input
+                  type="url"
+                  value={formData.submissionLink}
+                  onChange={(e) => handleInputChange('submissionLink', e.target.value)}
+                  placeholder="https://drive.google.com/file/d/... or https://meet.google.com/..."
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '8px',
+                    fontSize: '1rem',
+                    outline: 'none',
+                    transition: 'border-color 0.2s'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#2563EB'}
+                  onBlur={(e) => e.target.style.borderColor = '#D1D5DB'}
+                />
               </div>
-              <input
-                id="pdf-upload"
-                type="file"
-                accept=".pdf"
-                onChange={handleFileUpload}
-                style={{ display: 'none' }}
-              />
+              
+              <div style={{
+                backgroundColor: '#F0F9FF',
+                border: '1px solid #BAE6FD',
+                borderRadius: '8px',
+                padding: '1rem',
+                marginBottom: '1rem'
+              }}>
+                <h4 style={{ 
+                  color: '#0369A1', 
+                  fontSize: '0.875rem', 
+                  fontWeight: '600', 
+                  margin: '0 0 0.5rem 0' 
+                }}>
+                  Supported Link Types:
+                </h4>
+                <ul style={{ 
+                  color: '#0369A1', 
+                  fontSize: '0.875rem', 
+                  margin: 0, 
+                  paddingLeft: '1.25rem' 
+                }}>
+                  <li>Google Drive (make sure sharing is enabled)</li>
+                  <li>Google Meet recordings</li>
+                  <li>OneDrive links</li>
+                  <li>Dropbox links</li>
+                  <li>Any other shareable document link</li>
+                </ul>
+              </div>
+
+              {formData.submissionLink && !validateLink(formData.submissionLink) && (
+                <div style={{
+                  backgroundColor: '#FEF2F2',
+                  border: '1px solid #FECACA',
+                  borderRadius: '8px',
+                  padding: '0.75rem',
+                  color: '#DC2626',
+                  fontSize: '0.875rem'
+                }}>
+                  Please enter a valid URL (starting with http:// or https://)
+                </div>
+              )}
             </div>
           )}
 
@@ -284,9 +368,24 @@ const SubmissionWizard = ({ onClose }: SubmissionWizardProps) => {
                   <strong>Keywords:</strong> {formData.keywords}
                 </div>
                 <div>
-                  <strong>PDF File:</strong> {formData.pdfFile?.name || 'No file selected'}
+                  <strong>Submission Link:</strong> {formData.submissionLink || 'No link provided'}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Error Display */}
+          {submitError && (
+            <div style={{
+              backgroundColor: '#FEF2F2',
+              border: '1px solid #FECACA',
+              borderRadius: '8px',
+              padding: '0.75rem',
+              color: '#DC2626',
+              fontSize: '0.875rem',
+              marginTop: '1rem'
+            }}>
+              {submitError}
             </div>
           )}
 
@@ -324,21 +423,31 @@ const SubmissionWizard = ({ onClose }: SubmissionWizardProps) => {
 
             <button
               onClick={handleContinue}
+              disabled={isSubmitting}
               style={{
-                backgroundColor: '#2563EB',
+                backgroundColor: isSubmitting ? '#9CA3AF' : '#2563EB',
                 color: 'white',
                 border: 'none',
                 padding: '0.75rem 1.5rem',
                 borderRadius: '8px',
                 fontSize: '1rem',
                 fontWeight: '500',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s'
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                transition: 'background-color 0.2s',
+                opacity: isSubmitting ? 0.7 : 1
               }}
-              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#1D4ED8'}
-              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#2563EB'}
+              onMouseOver={(e) => {
+                if (!isSubmitting) {
+                  e.currentTarget.style.backgroundColor = '#1D4ED8'
+                }
+              }}
+              onMouseOut={(e) => {
+                if (!isSubmitting) {
+                  e.currentTarget.style.backgroundColor = '#2563EB'
+                }
+              }}
             >
-              {currentStep === 3 ? 'Submit' : 'Continue'}
+              {isSubmitting ? 'Submitting...' : (currentStep === 3 ? 'Submit' : 'Continue')}
             </button>
           </div>
         </div>
