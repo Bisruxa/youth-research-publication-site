@@ -9,9 +9,10 @@ import { ValuePropositions } from "./ValuePropositions";
 import { HowItWorks } from "./HowItWorks";
 import { DynamicCounters } from "./DynamicCounters";
 import { FeaturedResearch } from "./FeaturedResearch";
-import { AuthCard } from "./AuthCard";
+// import { AuthCard } from "./AuthCard";
 import { Footer } from "./Footer";
 import { DarkModeToggle } from "./DarkModeToggle";
+import Login from "../auth/Login";
 
 export default function LandingPage() {
   const [isDark, setIsDark] = useState(true);
@@ -109,7 +110,8 @@ export default function LandingPage() {
           <FeaturedResearch onStartPublishing={scrollToAuth} />
         </div>
         <div ref={authRef}>
-          <AuthCard />
+          {/* <AuthCard /> */}
+          <Login />
         </div>
       </main>
 
