@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import SubmissionWizard from './SubmissionWizard'
 
 interface Submission {
@@ -10,14 +10,42 @@ interface Submission {
 
 const StudentDashboard = () => {
   const [showWizard, setShowWizard] = useState(false)
+  const [submissions, setSubmissions] = useState<Submission[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-  const submissions: Submission[] = [
-    { id: 101, title: 'Optimizing Irrigation with ML', date: '8/9/2025', status: 'Accepted' },
-    { id: 112, title: 'Solar Microgrids for Schools', date: '7/1/2025', status: 'Under Review' },
-    { id: 115, title: 'Okra Extract & Blood Sugar', date: '6/14/2025', status: 'Accepted' },
-    { id: 120, title: 'e-Mobility Impacts in Developing Nations', date: '4/27/2025', status: 'Rejected' },
-    { id: 121, title: 'Soil Carbon Sequestration', date: '5/19/2025', status: 'Under Review' }
-  ]
+  // Fetch submissions from API
+  useEffect(() => {
+    const fetchSubmissions = async () => {
+      try {
+        const token = localStorage.getItem('authToken')
+        if (!token) {
+          setError('Authentication required')
+          setLoading(false)
+          return
+        }
+
+        const response = await fetch('/api/submissions', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          setSubmissions(data)
+        } else {
+          setError('Failed to load submissions')
+        }
+      } catch (err) {
+        setError('Network error')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchSubmissions()
+  }, [])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -145,89 +173,118 @@ const StudentDashboard = () => {
 
         {/* Table */}
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid #E2E8F0' }}>
-                <th style={{ 
-                  textAlign: 'left', 
-                  padding: '1rem 0', 
-                  color: '#64748B', 
-                  fontWeight: '600',
-                  fontSize: '0.875rem'
-                }}>
-                  ID
-                </th>
-                <th style={{ 
-                  textAlign: 'left', 
-                  padding: '1rem 0', 
-                  color: '#64748B', 
-                  fontWeight: '600',
-                  fontSize: '0.875rem'
-                }}>
-                  Title
-                </th>
-                <th style={{ 
-                  textAlign: 'right', 
-                  padding: '1rem 0', 
-                  color: '#64748B', 
-                  fontWeight: '600',
-                  fontSize: '0.875rem'
-                }}>
-                  Date
-                </th>
-                <th style={{ 
-                  textAlign: 'right', 
-                  padding: '1rem 0', 
-                  color: '#64748B', 
-                  fontWeight: '600',
-                  fontSize: '0.875rem'
-                }}>
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {submissions.map((submission) => (
-                <tr key={submission.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                  <td style={{ 
-                    padding: '1rem 0', 
-                    color: '#1E293B', 
-                    fontWeight: '500' 
-                  }}>
-                    {submission.id}
-                  </td>
-                  <td style={{ 
-                    padding: '1rem 0', 
-                    color: '#1E293B' 
-                  }}>
-                    {submission.title}
-                  </td>
-                  <td style={{ 
+          {loading ? (
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '2rem', 
+              color: '#64748B' 
+            }}>
+              Loading submissions...
+            </div>
+          ) : error ? (
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '2rem', 
+              color: '#DC2626',
+              backgroundColor: '#FEF2F2',
+              borderRadius: '8px',
+              border: '1px solid #FECACA'
+            }}>
+              {error}
+            </div>
+          ) : submissions.length === 0 ? (
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '2rem', 
+              color: '#64748B' 
+            }}>
+              No submissions yet. Create your first submission!
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #E2E8F0' }}>
+                  <th style={{ 
+                    textAlign: 'left', 
                     padding: '1rem 0', 
                     color: '#64748B', 
-                    textAlign: 'right' 
+                    fontWeight: '600',
+                    fontSize: '0.875rem'
                   }}>
-                    {submission.date}
-                  </td>
-                  <td style={{ 
+                    ID
+                  </th>
+                  <th style={{ 
+                    textAlign: 'left', 
                     padding: '1rem 0', 
-                    textAlign: 'right' 
+                    color: '#64748B', 
+                    fontWeight: '600',
+                    fontSize: '0.875rem'
                   }}>
-                    <span style={{
-                      backgroundColor: getStatusBgColor(submission.status),
-                      color: getStatusColor(submission.status),
-                      padding: '0.25rem 0.75rem',
-                      borderRadius: '9999px',
-                      fontSize: '0.875rem',
-                      fontWeight: '500'
-                    }}>
-                      {submission.status}
-                    </span>
-                  </td>
+                    Title
+                  </th>
+                  <th style={{ 
+                    textAlign: 'right', 
+                    padding: '1rem 0', 
+                    color: '#64748B', 
+                    fontWeight: '600',
+                    fontSize: '0.875rem'
+                  }}>
+                    Date
+                  </th>
+                  <th style={{ 
+                    textAlign: 'right', 
+                    padding: '1rem 0', 
+                    color: '#64748B', 
+                    fontWeight: '600',
+                    fontSize: '0.875rem'
+                  }}>
+                    Status
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {submissions.map((submission) => (
+                  <tr key={submission.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                    <td style={{ 
+                      padding: '1rem 0', 
+                      color: '#1E293B', 
+                      fontWeight: '500' 
+                    }}>
+                      {submission.id}
+                    </td>
+                    <td style={{ 
+                      padding: '1rem 0', 
+                      color: '#1E293B' 
+                    }}>
+                      {submission.title}
+                    </td>
+                    <td style={{ 
+                      padding: '1rem 0', 
+                      color: '#64748B', 
+                      textAlign: 'right' 
+                    }}>
+                      {submission.date}
+                    </td>
+                    <td style={{ 
+                      padding: '1rem 0', 
+                      textAlign: 'right' 
+                    }}>
+                      <span style={{
+                        backgroundColor: getStatusBgColor(submission.status),
+                        color: getStatusColor(submission.status),
+                        padding: '0.25rem 0.75rem',
+                        borderRadius: '9999px',
+                        fontSize: '0.875rem',
+                        fontWeight: '500'
+                      }}>
+                        {submission.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>
