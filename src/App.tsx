@@ -3,11 +3,11 @@ import LandingPage from "./Pages/LandingPage/LandingPage";
 import StudentDashboard from "./Components/StudentDashboard";
 import ResearchArchive from "./Pages/ReserachPages/AllResearch";
 import PaperDetail from "./Pages/ReserachPages/SinglePaper";
-import Login from "./Pages/Auth/Login";
-import Register from "./Pages/Auth/Register";
-import Dashboard from "./Pages/Admin/Dashboard";
-import UserManagement from "./Pages/Admin/UserManagement";
-import SubmissionsManagement from "./Pages/Admin/SubmissionsManagement";
+import Login from "./Pages/auth/Login";
+import Register from "./Pages/auth/Register";
+import Dashboard from "./Pages/admin/Dashboard";
+import UserManagement from "./Pages/admin/UserManagement";
+import SubmissionsManagement from "./Pages/admin/SubmissionsManagement";
 
 function App() {
   return (

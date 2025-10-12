@@ -11,10 +11,12 @@ import {
   Building,
   Star,
   MessageCircle,
+  Download,
+  Eye,
+  X,
 } from "lucide-react";
 import "./paperDetail.css";
 
-// Define the API response type based on your backend
 interface Paper {
   id: number;
   title: string;
@@ -36,6 +38,8 @@ export default function PaperDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [relatedPapers, setRelatedPapers] = useState<Paper[]>([]);
+  const [showPdfViewer, setShowPdfViewer] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   // Fetch paper details from API
   useEffect(() => {
@@ -79,28 +83,104 @@ export default function PaperDetail() {
     }
   }, [id]);
 
-  const handleViewpaper = () => {
+  const handleViewPaper = () => {
     if (!paper?.contentUrl) {
-      alert("paper URL not available");
+      alert("Paper URL not available");
+      return;
+    }
+    setShowPdfViewer(true);
+  };
+
+  const handleDownloadPaper = async () => {
+    if (!paper?.contentUrl) {
+      alert("Paper URL not available");
       return;
     }
 
     try {
-      // Create a temporary anchor element for download
-      const link = document.createElement("a");
-      link.href = paper.contentUrl;
-      link.download = `${paper.title.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
+      setDownloading(true);
 
-      // Append to body, click, and remove
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      if (
+        paper.contentUrl.startsWith("chrome-extension://") ||
+        paper.contentUrl.includes("chrome-extension")
+      ) {
+        handleDirectDownload();
+        return;
+      }
+
+      try {
+        const response = await fetch(paper.contentUrl, {
+          method: "GET",
+          mode: "cors",
+          credentials: "omit",
+        });
+
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = getSafeFilename(paper.title);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+          return;
+        }
+      } catch (fetchError) {
+        console.log("Fetch method failed, trying direct download:", fetchError);
+      }
+
+      // Fallback to direct download
+      handleDirectDownload();
     } catch (error) {
-      console.error("Download failed:", error);
-      alert("Download failed. Please try again.");
+      console.error("All download methods failed:", error);
+      alert(
+        "Download failed. The file may not be accessible for direct download."
+      );
+    } finally {
+      setDownloading(false);
     }
+  };
+
+  const handleDirectDownload = () => {
+    if (!paper?.contentUrl) return;
+
+    const link = document.createElement("a");
+
+    // For chrome extension URLs
+    if (paper.contentUrl.startsWith("chrome-extension://")) {
+      // Extract the actual PDF URL from the chrome extension URL
+      const parts = paper.contentUrl.split("https://");
+      if (parts.length > 1) {
+        const actualUrl = "https://" + parts[1];
+        link.href = actualUrl;
+      } else {
+        link.href = paper.contentUrl;
+      }
+    } else {
+      link.href = paper.contentUrl;
+    }
+
+    link.download = getSafeFilename(paper.title);
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+
+    // Add download attribute
+    link.setAttribute("download", "");
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const getSafeFilename = (title: string): string => {
+    return `${title.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
+  };
+
+  const handleDownloadFromViewer = () => {
+    handleDownloadPaper();
   };
 
   const handleRelatedPaperClick = (paperId: number) => {
@@ -113,6 +193,11 @@ export default function PaperDetail() {
 
     const year = new Date(paper.createdAt).getFullYear();
     return `Author ${paper.authorId}. (${year}). ${paper.title}. Research Archive.`;
+  };
+
+  // Check if URL is viewable in iframe (not chrome-extension)
+  const isUrlViewable = (url: string): boolean => {
+    return !url.startsWith("chrome-extension://");
   };
 
   if (loading) {
@@ -149,8 +234,67 @@ export default function PaperDetail() {
     );
   }
 
+  const canViewInIframe = isUrlViewable(paper.contentUrl);
+
   return (
     <div className="paper-detail-page">
+      {showPdfViewer && (
+        <div className="pdf-viewer-overlay">
+          <div className="pdf-viewer-container">
+            <div className="pdf-viewer-header">
+              <h3 className="pdf-viewer-title">{paper.title}</h3>
+              <div className="pdf-viewer-actions">
+                <button
+                  onClick={handleDownloadFromViewer}
+                  className="pdf-action-btn download"
+                  disabled={downloading}
+                >
+                  <Download className="h-4 w-4" />
+                  {downloading ? "Downloading..." : "Download"}
+                </button>
+                <button
+                  onClick={() => setShowPdfViewer(false)}
+                  className="pdf-action-btn close"
+                >
+                  <X className="h-4 w-4" />
+                  Close
+                </button>
+              </div>
+            </div>
+            <div className="pdf-viewer-content">
+              {canViewInIframe ? (
+                <iframe
+                  src={paper.contentUrl}
+                  title={paper.title}
+                  className="pdf-iframe"
+                  width="100%"
+                  height="100%"
+                />
+              ) : (
+                <div className="pdf-unavailable">
+                  <FileText className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+                  <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                    PDF Preview Unavailable
+                  </h3>
+                  <p className="text-gray-600 text-center mb-4">
+                    This PDF cannot be displayed in the browser due to security
+                    restrictions.
+                  </p>
+                  <button
+                    onClick={handleDownloadPaper}
+                    className="download-button"
+                    disabled={downloading}
+                  >
+                    <Download className="h-5 w-5" />
+                    {downloading ? "Downloading..." : "Download PDF to View"}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="paper-detail-wrapper">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -158,9 +302,7 @@ export default function PaperDetail() {
           transition={{ duration: 0.5 }}
           className="paper-detail-grid"
         >
-          {/* Main Content */}
           <div className="paper-main-content">
-            {/* Paper Header */}
             <div className="paper-detail-header">
               <h1 className="paper-detail-title">{paper.title}</h1>
 
@@ -194,6 +336,15 @@ export default function PaperDetail() {
                   {paper.status}
                 </div>
               </div>
+
+              {/* URL Type Warning */}
+              {paper.contentUrl.startsWith("chrome-extension://") && (
+                <div className="url-warning">
+                  <span className="warning-text">
+                    Note: This paper requires download to view
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Abstract Section */}
@@ -264,15 +415,23 @@ export default function PaperDetail() {
           <div className="paper-sidebar">
             {/* Actions Card */}
             <div className="paper-sidebar-section">
-              <h3 className="sidebar-heading">Actions</h3>
+              <h3 className="sidebar-heading">Paper Actions</h3>
               <div className="actions-container">
                 <button
-                  onClick={handleViewpaper}
-                  className="download-button"
+                  onClick={handleViewPaper}
+                  className="view-paper-button"
                   disabled={!paper.contentUrl}
                 >
-                  <BookOpen className="h-5 w-5" />
-                  {paper.contentUrl ? "View paper" : "Paper url  Not Available"}
+                  <Eye className="h-5 w-5" />
+                  {paper.contentUrl ? "View Paper" : "Paper Not Available"}
+                </button>
+                <button
+                  onClick={handleDownloadPaper}
+                  className="download-button"
+                  disabled={!paper.contentUrl || downloading}
+                >
+                  <Download className="h-5 w-5" />
+                  {downloading ? "Downloading..." : "Download PDF"}
                 </button>
                 <NavLink to="/allresearches" className="back-button">
                   <ArrowLeft className="h-5 w-5" />

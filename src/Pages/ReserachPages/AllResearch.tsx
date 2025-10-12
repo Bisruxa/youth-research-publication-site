@@ -36,10 +36,8 @@ const availableCategories = [
 const currentYear = new Date().getFullYear();
 const availableYears = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
-// Number of items per page
 const ITEMS_PER_PAGE = 6;
 
-// Define the API response type
 interface Paper {
   id: number;
   title: string;
@@ -378,7 +376,6 @@ export default function ResearchArchive() {
   return (
     <div className="research-archive">
       <div className="research-container">
-        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
