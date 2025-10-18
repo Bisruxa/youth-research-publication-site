@@ -48,7 +48,9 @@ export default function PaperDetail() {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(`http://localhost:3000/api/papers/${id}`);
+        const response = await fetch(
+          `https://yrs-api-8.onrender.com/api/papers/${id}`
+        );
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -59,7 +61,7 @@ export default function PaperDetail() {
 
         // Fetch related papers (all papers except current one)
         const allPapersResponse = await fetch(
-          "http://localhost:3000/api/papers"
+          "https://yrs-api-8.onrender.com/api/papers?status=all"
         );
         if (allPapersResponse.ok) {
           const allPapers = await allPapersResponse.json();
