@@ -69,7 +69,9 @@ export default function ResearchArchive() {
     const fetchPapers = async () => {
       try {
         setLoading(true);
-        const response = await fetch("http://localhost:3000/api/papers");
+        const response = await fetch(
+          "https://yrs-api-8.onrender.com/api/papers?status=all"
+        );
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
